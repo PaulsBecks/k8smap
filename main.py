@@ -9,6 +9,8 @@ POD_KIND = "Pod"
 DEPLOYMENT_KIND = "Deployment"
 SERVICE_ACCOUNT_KIND = "ServiceAccount"
 INGRESS_KIND = "Ingress"
+D2_FORMAT = "d2"
+MERMAID_FORMAT = "mermaid"
 
 class Resource:
     def __init__(self, description: dict) -> None:
@@ -40,8 +42,8 @@ class Resource:
         return ""
 
     def get_icon_url(self) -> str:
-        base_url = "https://raw.githubusercontent.com/kubernetes/community/master/icons/svg/resources/labeled/"
-        return f"{base_url}{self.get_short_kind()}.svg"
+        base_url = "https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/"
+        return f"{base_url}{self.get_short_kind()}.svg?raw=true"
 
     def get_selector(self) -> dict:
         if self.get_kind() == SERVICE_KIND:
@@ -84,14 +86,24 @@ class Node:
         self.name = name
         self.icon_url = icon_url
 
-    def __str__(self) -> str:
-        return f"{self.key}:{self.name} {{\n  icon: {self.icon_url}\n  shape: image\n}}"
+    def to_string(self, output_format: str) -> str:
+        if output_format == D2_FORMAT:
+            return f"{self.key}:{self.name} {{\n  icon: {self.icon_url}\n  shape: image\n}}"
+        if output_format == MERMAID_FORMAT:
+            return f"subgraph {self.key}[{self.name}]\n {self.key}_icon(<img src='{self.icon_url}' width='32' height='32'/>)\nend\n"
+        Exception("Unknown output format.")
 
 class Edge:
     def __init__(self, node: str, dependency: str) -> None:
         self.node = node
         self.dependency = dependency
 
+    def to_string(self, output_format: str) -> str:
+        if output_format == D2_FORMAT:
+            return f"{self.node} --> {self.dependency}"
+        if output_format == MERMAID_FORMAT:
+            return f"{self.node} --> {self.dependency}"
+        Exception("Unknown output format.")
 
 class Diagram:
     nodes: List[Node] = []
@@ -103,12 +115,14 @@ class Diagram:
     def add_edge(self, edge: Edge):
         self.edges.append(edge)
 
-    def output(self, output_path):
+    def output(self, output_path, output_format):
         with open(output_path, "w") as output_file:
+            if output_format == MERMAID_FORMAT:
+                output_file.write("flowchart TD\n")
             for node in self.nodes:
-                output_file.write(f"{node}\n")
+                output_file.write(f"{node.to_string(output_format)}\n")
             for edge in self.edges:
-                output_file.write(f"{edge.node} --> {edge.dependency}\n")
+                output_file.write(f"{edge.to_string(output_format)}\n")
 
 
 class Resources:
@@ -169,7 +183,8 @@ class Resources:
 @click.command()
 @click.option("-i")
 @click.option("-o", default="output.d2")
-def cli(i, o) -> None:
+@click.option("-f", default=D2_FORMAT)
+def cli(i, o, f) -> None:
     if not i:
         print(f"No input file provided. Do: {PACKAGE_NAME} -i <input-file-path>")
         return
@@ -182,7 +197,7 @@ def cli(i, o) -> None:
         for dependency in resources.find_dependencies(resource):
             diagram.add_edge(Edge(resource.get_key(), dependency.get_key()))
 
-    diagram.output(o)
+    diagram.output(o, f)
 
 
 if __name__ == "__main__":
