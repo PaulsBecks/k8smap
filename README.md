@@ -62,48 +62,11 @@ To generate an image for this graph you can run d2.
 d2 output.d2 out.svg
 ```
 
-![Visualization of the helm chart](./docs/out.svg)
+![Visualization of the helm chart](./docs/example-diagram.svg)
 
 Or generate a mermaid flowchart.
 ```
 mapk8s -i filename.yaml -f mermaid
-```
-
-```mermaid
-flowchart TD
-subgraph Service_pawn[pawn]
- Service_pawn_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/svc.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Service_bishop[bishop]
- Service_bishop_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/svc.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Pod_bishop-nginx[bishop-nginx]
- Pod_bishop-nginx_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/pod.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Deployment_nginx-deployment[nginx-deployment]
- Deployment_nginx-deployment_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/deploy.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Pod_nginx-deployment[nginx-deployment]
- Pod_nginx-deployment_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/pod.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Ingress_pawn-ingress[pawn-ingress]
- Ingress_pawn-ingress_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/ing.svg?raw=true' width='32' height='32'/>)
-end
-
-subgraph Ingress_bishop-ingress[bishop-ingress]
- Ingress_bishop-ingress_icon(<img src='https://github.com/kubernetes/community/blob/master/icons/svg/resources/labeled/ing.svg?raw=true' width='32' height='32'/>)
-end
-
-Service_pawn --> Pod_nginx-deployment
-Service_bishop --> Pod_bishop-nginx
-Deployment_nginx-deployment --> Pod_nginx-deployment
-Ingress_pawn-ingress --> Service_pawn
-Ingress_bishop-ingress --> Service_bishop
 ```
 
 # Components
