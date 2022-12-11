@@ -1,0 +1,5 @@
+/*.svg
+*.d2
+*.yaml
+
+.venv
