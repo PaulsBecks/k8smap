@@ -62,7 +62,7 @@ To generate an image for this graph you can run d2.
 d2 output.d2 out.svg
 ```
 
-![Visualization of the helm chart](./docs/example-diagram.png)
+![Visualization of the helm chart](./docs/out.svg)
 
 Or generate a mermaid flowchart.
 ```
