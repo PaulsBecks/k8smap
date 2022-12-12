@@ -3,3 +3,5 @@
 *.yaml
 
 .venv
+__pycache__
+dist

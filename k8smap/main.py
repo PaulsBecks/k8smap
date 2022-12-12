@@ -9,6 +9,11 @@ POD_KIND = "Pod"
 DEPLOYMENT_KIND = "Deployment"
 SERVICE_ACCOUNT_KIND = "ServiceAccount"
 INGRESS_KIND = "Ingress"
+NETWORK_POLICY_KIND = "NetworkPolicy"
+CONFIGMAP_KIND = "ConfigMap"
+CRONJOB_KIND = "CronJob"
+STATEFUL_SET_KIND = "StatefulSet"
+
 D2_FORMAT = "d2"
 MERMAID_FORMAT = "mermaid"
 
@@ -39,6 +44,14 @@ class Resource:
             return "sa"
         if kind == INGRESS_KIND:
             return "ing"
+        if kind == NETWORK_POLICY_KIND:
+            return "netpol"
+        if kind == CONFIGMAP_KIND:
+            return "cm"
+        if kind == CRONJOB_KIND:
+            return "cronjob"
+        if kind == STATEFUL_SET_KIND:
+            return "sts"
         return ""
 
     def get_icon_url(self) -> str:
@@ -52,7 +65,10 @@ class Resource:
 
     def matches_selector(self, matchesLabels: dict) -> bool:
         labels = self.get_labels()
-        return any([item in labels.items() for item in matchesLabels.items()])
+        match = True
+        for item in matchesLabels.items():
+            match &= item in labels.items()
+        return match
 
     def get_labels(self) -> dict:
         return self.description["metadata"]["labels"]
@@ -71,10 +87,14 @@ def get_resources_from_input(i):
     try:
         with open(i, "r") as stream:
             for resource_description in yaml.safe_load_all(stream):
+                if not resource_description or not resource_description["metadata"]:
+                    continue
                 resource = Resource(resource_description)
                 yield resource
                 if resource.get_kind() == DEPLOYMENT_KIND:
                     pod_description = resource.get_pod_template()
+                    if not pod_description:
+                        continue
                     yield Resource(pod_description)
     except IOError:
         print(f"Unable to load file from path {i}")
@@ -86,24 +106,26 @@ class Node:
         self.name = name
         self.icon_url = icon_url
 
-    def to_string(self, output_format: str) -> Optional[str]:
+    def to_string(self, output_format: str) -> str:
         if output_format == D2_FORMAT:
             return f"{self.key}:{self.name} {{\n  icon: {self.icon_url}\n  shape: image\n}}"
         if output_format == MERMAID_FORMAT:
             return f"subgraph {self.key}[{self.name}]\n {self.key}_icon(<img src='{self.icon_url}' width='32' height='32'/>)\nend\n"
-        Exception("Unknown output format.")
+        raise Exception("Unknown output format.")
+
 
 class Edge:
     def __init__(self, node: str, dependency: str) -> None:
         self.node = node
         self.dependency = dependency
 
-    def to_string(self, output_format: str) -> Optional[str]:
+    def to_string(self, output_format: str) -> str:
         if output_format == D2_FORMAT:
             return f"{self.node} --> {self.dependency}"
         if output_format == MERMAID_FORMAT:
             return f"{self.node} --> {self.dependency}"
-        Exception("Unknown output format.")
+        raise Exception("Unknown output format.")
+
 
 class Diagram:
     nodes: List[Node] = []
@@ -148,7 +170,17 @@ class Resources:
             return self.find_service_dependencies(resource)
         if kind == INGRESS_KIND:
             return self.find_ingress_dependencies(resource)
+        if kind == NETWORK_POLICY_KIND:
+            return self.find_network_policy_dependencies(resource)
         return []
+
+    def find_network_policy_dependencies(self, network_policy: Resource):
+        selector = network_policy.description["spec"]["podSelector"]["matchLabels"]
+        return [
+            resource
+            for resource in self.resources
+            if resource.get_kind() == POD_KIND and resource.matches_selector(selector)
+        ]
 
     def find_deployment_dependencies(self, deployment: Resource):
         selector = deployment.get_deployment_selector()
@@ -158,11 +190,29 @@ class Resources:
             if resource.get_kind() == POD_KIND and resource.matches_selector(selector)
         ]
 
-    def find_pod_dependencies(self, resource):
-        return []
+    def find_pod_dependencies(self, resource: Resource):
+        containers = resource.description["spec"]["containers"]
+        config_maps = []
+        for container in containers:
+            env_froms = container.get("envFrom", [])
+            for env_from in env_froms:
+                config_map_ref=env_from.get("configMapRef")
+                if config_map_ref:
+                    name = config_map_ref["name"]
+                    config_maps.append(self.find_config_map_by_name(name))
+        return config_maps
+
+    def find_config_map_by_name(self, name: str) -> Resource:
+        for resource in self.resources:
+            if resource.get_kind() == CONFIGMAP_KIND and resource.get_name() == name:
+                return resource
+        Exception(f"No config map with name {name} in resources.")
 
     def find_service_dependencies(self, service: Resource) -> List[Resource]:
-        selector = service.get_selector()
+        try:
+            selector = service.get_selector()
+        except:
+            return []
         return [
             resource
             for resource in self.resources
@@ -180,6 +230,7 @@ class Resources:
                 services.append(service)
         return services
 
+
 @click.command()
 @click.option("-i")
 @click.option("-o", default="output.d2")
@@ -193,7 +244,9 @@ def cli(i, o, f) -> None:
     diagram = Diagram()
 
     for resource in resources.resources:
-        diagram.add_node(Node(resource.get_key(), resource.get_name(), resource.get_icon_url()))
+        diagram.add_node(
+            Node(resource.get_key(), resource.get_name(), resource.get_icon_url())
+        )
         for dependency in resources.find_dependencies(resource):
             diagram.add_edge(Edge(resource.get_key(), dependency.get_key()))
 

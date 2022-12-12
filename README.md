@@ -7,9 +7,9 @@ Also it helps me document the infrastructure automatically visually for my colle
 # Quick start
 
 ```
-poetry add mapk8s
+poetry add k8smap
 
-mapk8s -i filename.yaml
+k8smap -i filename.yaml
 ```
 
 # Example
@@ -17,7 +17,7 @@ You can clone the repo and test it locally.
 
 ```
 helm template example > example.yaml 
-poetry run python main.py -i infratest.yaml
+poetry run k8smap -i infratest.yaml
 ```
 
 This will generate the following output to file file `output.d2`:
@@ -77,11 +77,11 @@ So far the following components are implemented:
 - [x] Deployment
 - [x] Ingress
 - [x] Service
+- [x] Config Map
+- [x] Network Policy
 - [ ] Service Account
-- [ ] Network Policy
 - [ ] Cron Job
 - [ ] Job
-- [ ] Config Map
 - [ ] Secret
 - [ ] Volume
 - [ ] Persistent Volume
